@@ -1,0 +1,51 @@
+{
+  "description": "True parameters used to generate the synthetic dataset",
+  "seed": 42,
+  "p01": [
+    0.0078,
+    0.0057,
+    0.0052,
+    0.0101,
+    0.0354,
+    0.3269,
+    0.624,
+    0.5143,
+    0.3662,
+    0.0962,
+    0.0317,
+    0.0105
+  ],
+  "p11": [
+    0.2,
+    0.2,
+    0.2,
+    0.25,
+    0.35,
+    0.75,
+    0.88,
+    0.85,
+    0.72,
+    0.5,
+    0.3,
+    0.2
+  ],
+  "season_gamma": {
+    "Winter": {
+      "shape": 0.7,
+      "scale": 8.0
+    },
+    "Pre-monsoon": {
+      "shape": 0.65,
+      "scale": 14.0
+    },
+    "Monsoon": {
+      "shape": 0.8,
+      "scale": 32.0
+    },
+    "Post-monsoon": {
+      "shape": 0.7,
+      "scale": 20.0
+    }
+  },
+  "note": "Gamma parameters are for the excess over 1 mm at average humidity; the humidity factor adds extra spread, so fitted scale is expected to be slightly larger."
+}

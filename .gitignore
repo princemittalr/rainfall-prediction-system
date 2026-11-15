@@ -1,0 +1,12 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# Node (frontend/dist IS committed so the site runs without Node)
+frontend/node_modules/
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

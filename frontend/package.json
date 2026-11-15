@@ -1,0 +1,23 @@
+{
+  "name": "rainfall-prediction-frontend",
+  "private": true,
+  "version": "2.0.0",
+  "description": "React dashboard for the Rainfall Prediction System (Applied Statistics & Stochastic Processes)",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch"
+  },
+  "dependencies": {
+    "d3-array": "3.2.4",
+    "d3-scale": "4.0.2",
+    "d3-shape": "3.2.0",
+    "katex": "0.16.47",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-icons": "5.7.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}
