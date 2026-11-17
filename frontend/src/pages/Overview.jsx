@@ -3,7 +3,7 @@ import {
   LuArrowRight, LuCloud, LuDroplets, LuGauge, LuLightbulb, LuMapPin, LuShuffle, LuSigma, LuSparkles, LuTarget, LuTrendingUp,
 } from "react-icons/lu";
 import { useApp } from "../App.jsx";
-import { predict } from "../lib/api.js";
+import { isUpgraded, predict } from "../lib/api.js";
 import { Bars, C, Legend, Plot, bandIndex } from "../components/charts.jsx";
 import { Card, Gauge, fmt, pct, pfmt } from "../components/ui.jsx";
 import { MonsoonScene, WeatherArt, kindFromWeather } from "../components/Illustrations.jsx";
@@ -38,6 +38,7 @@ export default function Overview() {
     predict(mode, a, {
       humidity_pct: cond.humidity_pct, cloud_pct: cond.cloud_pct, pressure_hpa: cond.pressure_hpa,
       temp_c: cond.temp_c, wind_kmh: cond.wind_kmh, month: cond.month, today_wet: (cond.rain_mm ?? 0) >= a.meta.wet_threshold_mm,
+      rain_today: cond.rain_mm ?? 0,
     }).then(setFc);
   }, [cond, mode, a]);
 
@@ -45,7 +46,7 @@ export default function Overview() {
   const annual = clim.reduce((s, m) => s + m.rain_total_mean, 0);
   const monsoonShare = clim.filter((m) => m.month >= 6 && m.month <= 9).reduce((s, m) => s + m.rain_total_mean, 0) / annual;
   const humTest = a.descriptive.correlation.tests.find((t) => t.key === "humidity_pct");
-  const mult = fc?.regression.find((r) => r.key === "multiple");
+  const mult = fc?.regression.find((r) => r.key === (isUpgraded(a) ? "extended" : "multiple"));
 
   const horizon = fc?.markov.horizon || [];
   const nwp = live?.daily?.precipitation_probability_max;
@@ -87,7 +88,7 @@ export default function Overview() {
               <div><span>Today is</span><strong>{fc.markov.today}</strong><small>{fc.markov.month} transition matrix</small></div>
               <div><span>Expected rainfall</span><strong>{fmt(fc.distribution.expected_tomorrow, 1)} mm</strong><small>P(wet) × E[amount | wet]</small></div>
               <div><span>If it rains, 95% range</span><strong>{fmt(fc.distribution.interval_if_wet[0], 1)}–{fmt(fc.distribution.interval_if_wet[1], 0)} mm</strong><small>{fc.distribution.season} Gamma fit</small></div>
-              <div><span>Regression (today's conditions)</span><strong>{fmt(mult.yhat, 1)} mm</strong><small>95% PI {fmt(mult.pi[0], 1)}–{fmt(mult.pi[1], 1)} mm</small></div>
+              <div><span>Multiple regression (today)</span><strong>{fmt(mult.yhat, 1)} mm</strong><small>95% PI {fmt(mult.pi[0], 1)}–{fmt(mult.pi[1], 1)} mm</small></div>
             </div>
           </div>
         ) : <div className="skeleton" style={{ height: 180 }} />}
@@ -180,7 +181,7 @@ export default function Overview() {
         {[
           ["#/probability", "Probability", "Which distribution fits rainfall? Gamma vs Normal, P(X > t)", LuSigma],
           ["#/markov", "Markov chain", "Does rain have memory? Transition matrix & spells", LuShuffle],
-          ["#/regression", "Regression", "OLS with t-tests, F-test, prediction intervals", LuTrendingUp],
+          ["#/regression", "Multiple regression", "Pressure, temperature, humidity, cloud, wind and more, with F-tests", LuTrendingUp],
           ["#/predict", "Predict", "Enter conditions → estimate with uncertainty", LuGauge],
         ].map(([href, t, d, Icon]) => (
           <a key={href} href={href} className="explore-card">

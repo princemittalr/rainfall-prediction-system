@@ -47,16 +47,26 @@ def main() -> None:
           f"skill = {f(ev['brier_skill'])}, accuracy = {f(ev['accuracy'])}")
 
     r = a["regression"]
-    print(f"\n## Regression (train {r['split']['train_years']}, test {r['split']['test_years']})\n")
-    print("| Model | R² (train) | Test RMSE | Test MAE | Climatology RMSE | Skill | 95% PI coverage |\n|---|---|---|---|---|---|---|")
+    print(f"\n## Multiple linear regression (train {r['split']['train_years']}, test {r['split']['test_years']})\n")
+    print("| Model | Predictors | R² | Adj. R² | AIC | Test RMSE | Skill vs climatology | 95% PI coverage |\n|---|---|---|---|---|---|---|---|")
     for mo in r["models"]:
-        t = mo["test"]
-        print(f"| {mo['name']} | {f(mo['summary']['r2'])} | {f(t['rmse'],2)} | {f(t['mae'],2)} | "
-              f"{f(t['baseline_rmse'],2)} | {f(t['skill_vs_climatology'])} | {f(t['pi_coverage'])} |")
-    mult = next(mo for mo in r["models"] if mo["key"] == "multiple")
-    print("\nMultiple regression coefficients:\n\n| Term | Estimate | SE | t | p |\n|---|---|---|---|---|")
-    for c in mult["summary"]["coefficients"]:
-        print(f"| {c['label']} | {f(c['estimate'],4)} | {f(c['se'],4)} | {f(c['t'],2)} | {c['p']:.3g} |")
+        t, sm = mo["test"], mo["summary"]
+        print(f"| {mo['name']} | {sm['p']} | {f(sm['r2'])} | {f(sm['adj_r2'])} | {sm['aic']:.0f} | {f(t['rmse'],2)} | "
+              f"{t['skill_vs_climatology']*100:+.1f}% | {t['pi_coverage']*100:.1f}% |")
+    print("\nNested F-tests (do the added predictors help?):\n\n| Reduced → full | q | F | p | ΔR² |\n|---|---|---|---|---|")
+    for nt in r["nested_tests"]:
+        print(f"| {nt['reduced']} → {nt['full']} | {nt['q']} | {nt['F']:.1f} | {nt['p']:.3g} | {nt['delta_r2']:+.3f} |")
+    sel = r["selection"]
+    print(f"\nBackward elimination (alpha = {sel['alpha']}): removed {sel['removed'] or 'nothing'}")
+    ext = next(mo for mo in r["models"] if mo["key"] == "extended")
+    sm = ext["summary"]
+    print(f"\nExtended model coefficients (Durbin-Watson {sm['durbin_watson']:.2f}, Breusch-Pagan LM {sm['breusch_pagan']['lm']:.0f}, "
+          f"p {sm['breusch_pagan']['p']:.3g}):\n\n| Term | Estimate | SE | Robust SE (HC3) | t | p | Std. beta |\n|---|---|---|---|---|---|---|")
+    for c in sm["coefficients"]:
+        print(f"| {c['label']} | {f(c['estimate'],4)} | {f(c['se'],4)} | {f(c['se_hc3'],4)} | {f(c['t'],2)} | {c['p']:.3g} | "
+              f"{'' if c['standardized'] is None else f(c['standardized'],3)} |")
+    print("\nVIF: " + ", ".join(f"{v['symbol']} {v['vif']:.2f}" for v in r["vif"]))
+    print("Skill by test year: " + ", ".join(f"{y['year']}: {y['skill']*100:+.0f}%" for y in ext["test"]["per_year"]))
 
     s = a["simulation"]
     print(f"\n## Monte Carlo ({s['n_years']} simulated years)\n")

@@ -11,6 +11,19 @@ Course project · *Applied Statistics & Stochastic Processes*
 | Frontend | React 19 · custom SVG charts (D3 scales) · KaTeX formulas · dark mode · mobile layout |
 | Data | Open-Meteo Historical Weather API (ERA5 reanalysis), or a built-in synthetic dataset |
 
+## What's new in 2.1 — multiple linear regression
+
+After review, the regression module was rebuilt around **multiple** linear regression, because rainfall depends on several factors at once, not on humidity alone. On the real Mumbai data (test years 2021–2025):
+
+| Model | Predictors | R² | Skill vs climatology |
+|---|---|---|---|
+| Humidity only | 1 | 0.22 | −3.5% |
+| Pressure, temperature, humidity, cloud, wind | 5 | 0.42 | +26.0% |
+| Extended (adds pressure/temperature change, yesterday's rain, season) | 10 | 0.54 | +38.0% |
+| Next-day forecast | 9 | 0.49 | +27.2% |
+
+Each step is justified with a partial F-test, and the final predictor set comes from backward elimination at α = 0.05.
+
 ---
 
 ## ▶️ Run it (Windows PowerShell)
@@ -71,9 +84,9 @@ macOS / Linux users can simply run `./run.sh`.
 | **Data & Statistics** | Cleaning log, mean / variance / SD / skewness / kurtosis, CI for μ, histograms, correlation heat map, r significance tests | Descriptive statistics, correlation |
 | **Probability** | Mixed random variable, MLE fits of Gamma / Weibull / Exponential / Lognormal / Normal, KS + χ² + AIC, Q-Q plot, CDF, P(X > t) calculator, Poisson model of heavy-rain days | Distributions, goodness of fit, Poisson |
 | **Markov Chain** | State diagram, transition matrix, stationary distribution, n-step (Chapman–Kolmogorov), geometric spell lengths, χ² test of the Markov property, Brier skill score | Markov chains, hypothesis testing |
-| **Regression** | Simple, multiple and log-linear OLS with SE / t / p / CI, R², F-test, Durbin–Watson, VIF, residual diagnostics, out-of-sample evaluation, prediction-interval coverage | Correlation & regression |
+| **Regression** | Multiple linear regression built step by step: humidity only → 5 weather factors (pressure, temperature, humidity, cloud, wind) → extended model with day-to-day changes, yesterday's rain and season, chosen by partial F-tests and backward elimination; HC3 robust SEs, Breusch–Pagan, VIF, Cook's distance; next-day forecast; per-year out-of-sample skill | Multiple regression, hypothesis testing |
 | **Monte Carlo** | Chain-dependent (Markov–Gamma) weather generator; distribution of annual/monsoon totals vs observed | Stochastic simulation |
-| **Predict** | Enter conditions → regression estimate + confidence and prediction intervals, P(rain tomorrow), Gamma-based amounts and exceedance | All of the above |
+| **Predict** | Today's and yesterday's weather → multiple-regression estimate for today and forecast for tomorrow, with intervals and a breakdown of how much each factor moved the estimate; P(rain tomorrow), Gamma-based amounts | All of the above |
 | **Methodology** | Pipeline, hypotheses H1–H4, limitations, references, API | — |
 
 Get every key number as Markdown (paste into the report or slides):

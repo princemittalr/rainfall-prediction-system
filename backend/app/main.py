@@ -22,7 +22,7 @@ app = FastAPI(
     title="Rainfall Prediction System API",
     description="Probability distributions, Markov chains and regression for daily rainfall - "
     "Applied Statistics & Stochastic Processes course project.",
-    version="2.0.0",
+    version="2.1.0",
 )
 app.add_middleware(
     CORSMiddleware,
@@ -39,7 +39,12 @@ class PredictRequest(BaseModel):
     temp_c: float = Field(..., ge=-50, le=60, description="Mean temperature (°C)")
     wind_kmh: float = Field(..., ge=0, le=300, description="Maximum wind speed (km/h)")
     month: int = Field(..., ge=1, le=12)
-    today_wet: bool = Field(False, description="Did it rain (>= 1 mm) today?")
+    today_wet: bool = Field(False, description="Did it rain (>= 1 mm) today? Ignored when rain_today is given")
+    rain_today: Optional[float] = Field(None, ge=0, le=1000, description="Rainfall observed today (mm)")
+    pressure_prev: Optional[float] = Field(None, ge=850, le=1090, description="Yesterday's mean pressure (hPa)")
+    temp_prev: Optional[float] = Field(None, ge=-50, le=60, description="Yesterday's mean temperature (°C)")
+    humidity_prev: Optional[float] = Field(None, ge=0, le=100, description="Yesterday's mean humidity (%)")
+    rain_prev: Optional[float] = Field(None, ge=0, le=1000, description="Yesterday's rainfall (mm)")
     level: float = Field(0.95, gt=0.5, lt=1.0, description="Interval confidence level")
     threshold: float = Field(50.0, ge=0, le=500, description="Threshold for P(X > t), mm")
 
@@ -65,8 +70,10 @@ def meta() -> dict:
 
 @app.post("/api/predict")
 def predict(req: PredictRequest) -> dict:
-    """Regression estimate with confidence/prediction intervals, Markov-chain probability of
-    rain tomorrow and Gamma-based exceedance probabilities."""
+    """Multiple-regression estimates (same day and next day) with confidence/prediction
+    intervals and factor contributions, Markov-chain probability of rain tomorrow and
+    Gamma-based exceedance probabilities. Fields for yesterday are optional: when they are
+    missing, the day-to-day changes are taken as 0 and yesterday's rain as 0 mm."""
     inputs = req.model_dump(exclude={"level", "threshold"})
     return engine.predict(inputs, level=req.level, threshold=req.threshold)
 

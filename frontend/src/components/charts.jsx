@@ -108,7 +108,7 @@ export function Line({ data, x, y, color = C.sky, width = 2.5, dash, curve = tru
 }
 
 export function Band({ data, x, y, color = C.sky, opacity = 0.18, curve = true }) {
-  const gen = d3area().x((d) => x(d[0])).y0((d) => y(d[1])).y1((d) => y(d[2]));
+  const gen = d3area().defined((d) => d[1] != null && d[2] != null).x((d) => x(d[0])).y0((d) => y(d[1])).y1((d) => y(d[2]));
   if (curve) gen.curve(curveMonotoneX);
   return <path d={gen(data)} style={{ fill: color }} opacity={opacity} />;
 }

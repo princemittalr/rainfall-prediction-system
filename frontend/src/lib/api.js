@@ -32,10 +32,27 @@ export async function loadAnalysis() {
 }
 
 // ---------------------------------------------------------------- prediction
+// Mirrors backend/app/engine/features.py :: features_from_inputs
+export function featuresFromInputs(inp) {
+  const month = Number(inp.month);
+  const angle = (2 * Math.PI * ((month - 1) * 30.44 + 15)) / 365.25;
+  const num = (v, d) => (v === undefined || v === null || v === "" ? d : Number(v));
+  const pressure = Number(inp.pressure_hpa), temp = Number(inp.temp_c), hum = Number(inp.humidity_pct);
+  const rainToday = inp.rain_today === undefined || inp.rain_today === null ? (inp.today_wet ? 1 : 0) : Number(inp.rain_today);
+  return {
+    humidity_pct: hum, cloud_pct: Number(inp.cloud_pct), pressure_hpa: pressure, temp_c: temp, wind_kmh: Number(inp.wind_kmh),
+    dp_hpa: pressure - num(inp.pressure_prev, pressure), dtemp_c: temp - num(inp.temp_prev, temp), dhum_pct: hum - num(inp.humidity_prev, hum),
+    rain_lag1: num(inp.rain_prev, 0), rain_today: rainToday, season_sin: Math.sin(angle), season_cos: Math.cos(angle),
+  };
+}
+
 function localPredict(a, inputs, level, threshold) {
+  const feats = featuresFromInputs(inputs);
+  const labels = a.regression.labels || {}, symbols = a.regression.symbols || {};
   const reg = a.regression.models.map((m) => {
     const e = m.export;
-    const x = [1, ...e.features.map((f) => Number(inputs[f]))];
+    const xs = e.features.map((f) => feats[f]);
+    const x = [1, ...xs];
     let yhat = x.reduce((s, v, i) => s + v * e.coef[i], 0);
     const h = quadForm(x, e.xtx_inv);
     const t = tPpf(0.5 + level / 2, e.df_resid);
@@ -43,24 +60,33 @@ function localPredict(a, inputs, level, threshold) {
     let pi = [yhat - t * e.s * Math.sqrt(1 + h), yhat + t * e.s * Math.sqrt(1 + h)];
     if (e.log_target) { const f = Math.expm1; yhat = f(yhat); ci = ci.map(f); pi = pi.map(f); }
     const clip = (v) => Math.max(0, v);
-    return { key: m.key, name: m.name, yhat: clip(yhat), ci: ci.map(clip), pi: pi.map(clip), category: imdCategory(clip(yhat)) };
+    const out = { key: m.key, name: m.name, target: e.target || "rain_mm", yhat: clip(yhat), ci: ci.map(clip), pi: pi.map(clip), category: imdCategory(clip(yhat)) };
+    if (e.means && !e.log_target) {
+      const baseline = e.coef[0] + e.means.reduce((s, mu, i) => s + mu * e.coef[i + 1], 0);
+      const parts = e.features.map((f, i) => ({ term: f, label: labels[f] || f, symbol: symbols[f] || f, value: xs[i], mean: e.means[i], effect: e.coef[i + 1] * (xs[i] - e.means[i]) }))
+        .sort((p, q) => Math.abs(q.effect) - Math.abs(p.effect));
+      out.contributions = { baseline, parts };
+    }
+    return out;
   });
   const month = Number(inputs.month);
+  const todayWet = inputs.rain_today === undefined || inputs.rain_today === null ? !!inputs.today_wet : feats.rain_today >= a.meta.wet_threshold_mm;
   const mm = a.markov.monthly[month - 1];
   const P = mm.P;
-  const pWet = inputs.today_wet ? P[1][1] : P[0][1];
+  const pWet = todayWet ? P[1][1] : P[0][1];
   const season = MONTH_TO_SEASON[month];
   const g = a.distribution.season_fits[season];
   const thr = a.meta.wet_threshold_mm;
   const sfT = threshold >= thr ? gammaSf(Math.max(threshold - thr, 0), g.shape, g.scale) : 1;
   const horizon = [];
-  let v = inputs.today_wet ? [0, 1] : [1, 0];
+  let v = todayWet ? [0, 1] : [1, 0];
   for (let d = 1; d <= 7; d++) { v = [v[0] * P[0][0] + v[1] * P[1][0], v[0] * P[0][1] + v[1] * P[1][1]]; horizon.push({ day: d, p_wet: v[1] }); }
   const meanIfWet = thr + g.shape * g.scale;
   return {
     inputs: { ...inputs, level, threshold },
+    features: feats,
     regression: reg,
-    markov: { month: mm.name, today: inputs.today_wet ? "Wet" : "Dry", p_wet_tomorrow: pWet, horizon, stationary_wet: mm.stationary_wet },
+    markov: { month: mm.name, today: todayWet ? "Wet" : "Dry", p_wet_tomorrow: pWet, horizon, stationary_wet: mm.stationary_wet },
     distribution: {
       season, shape: g.shape, scale: g.scale, mean_if_wet: meanIfWet,
       interval_if_wet: [thr + gammaPpf((1 - level) / 2, g.shape, g.scale), thr + gammaPpf(0.5 + level / 2, g.shape, g.scale)],
@@ -68,6 +94,10 @@ function localPredict(a, inputs, level, threshold) {
     },
   };
 }
+
+/** The headline regression model, falling back for snapshots made by older versions. */
+export const primaryModel = (a) => a.regression.models.find((m) => m.key === (a.regression.primary || "multiple")) || a.regression.models[0];
+export const isUpgraded = (a) => !!a.regression.selection;
 
 export async function predict(mode, analysis, inputs, level = 0.95, threshold = 50) {
   if (mode === "live") {

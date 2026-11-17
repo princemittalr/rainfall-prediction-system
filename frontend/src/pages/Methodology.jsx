@@ -8,7 +8,7 @@ const PIPELINE = [
   ["Descriptive stats", "mean, variance, skew"],
   ["Distributions", "Gamma vs 4 rivals, GOF"],
   ["Markov chain", "wet/dry transitions"],
-  ["Regression", "OLS + inference"],
+  ["Multiple regression", "11 candidate factors, F-tests"],
   ["Monte Carlo", "simulate seasons"],
   ["Evaluation", "train/test, skill scores"],
 ];
@@ -20,7 +20,7 @@ const SYLLABUS = [
   { unit: "Goodness of fit", where: "Kolmogorov–Smirnov, Pearson χ² with equiprobable bins, AIC/BIC, Q-Q plots", page: "probability" },
   { unit: "Poisson distribution / process", where: "Annual count of heavy-rain days, dispersion index test", page: "probability" },
   { unit: "Correlation", where: "Pearson & Spearman, t-test for ρ = 0, Fisher-z confidence interval", page: "data" },
-  { unit: "Regression", where: "Simple & multiple OLS, t and F tests, R², CI vs PI, residual diagnostics, VIF, Durbin–Watson", page: "regression" },
+  { unit: "Multiple linear regression", where: "Rainfall on pressure, temperature, humidity, cloud, wind, day-to-day changes, yesterday's rain and season; t, F and partial F-tests; backward elimination; adjusted R², AIC/BIC; VIF, Durbin–Watson, Breusch–Pagan, robust (HC3) SEs, Cook's distance; next-day forecast", page: "regression" },
   { unit: "Markov chains", where: "Transition matrix MLE, stationary distribution, n-step (Chapman–Kolmogorov), geometric spell lengths, χ² test of the Markov property", page: "markov" },
   { unit: "Stochastic simulation", where: "Monte Carlo chain-dependent weather generator; random sums", page: "simulation" },
   { unit: "Hypothesis testing", where: "Every claim above is backed by a stated H₀, test statistic and p-value", page: "method" },
@@ -69,7 +69,7 @@ export default function Methodology() {
         <ol className="hyp">
           <li><b>H1.</b> Wet-day rainfall is better described by a Gamma-type distribution than by the Normal. <span className="tag">KS, χ², AIC</span></li>
           <li><b>H2.</b> Daily wet/dry occurrence has memory (first-order Markov), not independent Bernoulli trials. <span className="tag">χ² independence</span></li>
-          <li><b>H3.</b> Humidity, cloud, pressure, temperature and wind have significant linear association with rainfall. <span className="tag">t, F tests</span></li>
+          <li><b>H3.</b> Rainfall depends on several weather factors together: a multiple regression on pressure, temperature, humidity, cloud and wind (and their day-to-day changes) explains significantly more than humidity alone. <span className="tag">t, F, partial F</span></li>
           <li><b>H4.</b> The models beat a climatology baseline on unseen years, and their nominal 95% intervals achieve close to 95% coverage. <span className="tag">RMSE, Brier, coverage</span></li>
         </ol>
       </Card>
@@ -83,10 +83,10 @@ export default function Methodology() {
       <Card className="span-6" title="Limitations — stated honestly">
         <ul className="limits">
           <li><LuTriangleAlert /> {a.meta.synthetic ? "This deployment runs on synthetic data; numbers illustrate the method only." : `Data are ERA5 reanalysis for one grid cell near ${a.meta.location}, not a rain gauge.`}</li>
-          <li><LuTriangleAlert /> Same-day regression shows association, not causation, and is not a forecast of the future.</li>
+          <li><LuTriangleAlert /> The same-day regression shows association, not causation; the separate next-day model is the true forecast.</li>
           <li><LuTriangleAlert /> Rainfall residuals are skewed and heteroscedastic, so OLS intervals are approximate (coverage is reported).</li>
           <li><LuTriangleAlert /> First-order chain with fixed monthly parameters underestimates long spells and year-to-year variability.</li>
-          <li><LuCircleCheck /> Extensions: second-order chain, logistic regression for occurrence, Gamma GLM for amounts, ENSO covariate.</li>
+          <li><LuCircleCheck /> Extensions: more variables (dew point, solar radiation, wind direction), logistic regression for occurrence, Gamma GLM for amounts, ENSO covariate.</li>
         </ul>
       </Card>
 

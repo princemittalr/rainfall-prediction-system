@@ -388,6 +388,25 @@ input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius
 .vif span:not(:first-child) { background: var(--surface-2); padding: 3px 9px; border-radius: 999px; font-weight: 700; }
 .vif small { color: var(--text-muted); }
 
+/* Horizontal bars (standardised coefficients, contributions) */
+.hbars { display: flex; flex-direction: column; gap: 7px; }
+.hbar-row { display: grid; grid-template-columns: minmax(92px, 1.1fr) 2fr 52px; align-items: center; gap: 8px; font-size: 12.5px; }
+.hbar-label { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hbar-label small { font-weight: 500; color: var(--text-muted); }
+.hbar-track { position: relative; height: 12px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.hbar { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; }
+.hbar.pos { background: var(--c-orange); } .hbar.neg { background: var(--c-sky); }
+.hbar-val { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.contrib { display: flex; flex-direction: column; gap: 6px; }
+.contrib-row { display: grid; grid-template-columns: minmax(150px, 1.3fr) 2fr 62px; align-items: center; gap: 8px; font-size: 12.5px; }
+.contrib-track { position: relative; height: 14px; }
+.contrib-track::before { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; border-left: 1.5px dashed var(--c-grey); }
+.contrib-bar { position: absolute; top: 1px; height: 12px; border-radius: 4px; }
+.contrib-bar.pos { left: 50%; background: var(--c-orange); } .contrib-bar.neg { right: 50%; background: var(--c-sky); }
+.contrib-total { display: flex; justify-content: space-between; gap: 10px; padding: 10px 12px; margin-top: 8px; background: var(--surface-2); border-radius: 12px; font-size: 13px; }
+.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.form-group-title { font-size: 11.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c-orange); margin-top: 18px; }
+
 /* Simulation */
 .algo { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; }
 .algo .formula { margin-top: 6px; }

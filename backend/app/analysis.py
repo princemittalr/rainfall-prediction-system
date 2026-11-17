@@ -24,6 +24,7 @@ from .config import (
 )
 from .data import active_data_file, clean, load_raw
 from .engine import descriptive, distributions, markov, regression, simulate
+from .engine.features import add_features, features_from_inputs
 
 IMD_CATEGORIES = [  # India Meteorological Department daily rainfall categories
     (0.0, 0.1, "No rain"),
@@ -89,6 +90,7 @@ class Engine:
     def _build(self) -> None:
         raw, meta = load_raw()
         df, cleaning = clean(raw)
+        df = add_features(df)
         years = sorted(df["year"].unique())
         full_years = [y for y in years if (df["year"] == y).sum() >= 360]
         test_years = full_years[-TEST_YEARS:]
@@ -165,6 +167,7 @@ class Engine:
     def _findings(dist, mk, reg, mc, summary) -> list[dict]:
         rain = next(s for s in summary if s["key"] == "rain_mm")
         mult = next(m for m in reg["models"] if m["key"] == "multiple")
+        ext = next(m for m in reg["models"] if m["key"] == "extended")
         simple = next(m for m in reg["models"] if m["key"] == "simple")
         ov = mk["overall"]
         return [
@@ -173,10 +176,10 @@ class Engine:
             {"title": "Rain has memory", "value": f"χ² = {ov['test']['chi2']:.0f}",
              "text": f"P(wet | wet yesterday) = {ov['P'][1][1]:.2f} vs P(wet | dry yesterday) = {ov['P'][0][1]:.2f}; "
                      f"independence rejected (p {'< 0.001' if ov['test']['p'] < 0.001 else '= ' + format(ov['test']['p'], '.3f')})."},
-            {"title": "Regression explains part of the variance", "value": f"R² = {mult['summary']['r2']:.2f}",
-             "text": f"Humidity alone: R² = {simple['summary']['r2']:.2f}. With 5 predictors the test RMSE is "
-                     f"{mult['test']['rmse']:.1f} mm vs {mult['test']['baseline_rmse']:.1f} mm for climatology."},
-            {"title": "Uncertainty is quantified", "value": f"{mult['test']['pi_coverage']*100:.0f}% coverage",
+            {"title": "Multiple factors beat one", "value": f"R² {simple['summary']['r2']:.2f} → {ext['summary']['r2']:.2f}",
+             "text": f"Humidity alone: skill {simple['test']['skill_vs_climatology']*100:+.0f}% vs climatology. 5 factors: "
+                     f"{mult['test']['skill_vs_climatology']*100:+.0f}%. Extended multiple regression: {ext['test']['skill_vs_climatology']*100:+.0f}% on unseen years."},
+            {"title": "Uncertainty is quantified", "value": f"{ext['test']['pi_coverage']*100:.0f}% coverage",
              "text": "Share of test days whose rainfall fell inside the nominal 95% prediction interval."},
             {"title": "Simulation reproduces the climate", "value": f"{mc['annual']['mean']:.0f} mm/yr",
              "text": f"Monte Carlo mean annual total; observed mean {mc['annual']['observed_mean']:.0f} mm. "
@@ -187,21 +190,24 @@ class Engine:
     def predict(self, inputs: dict, level: float = 0.95, threshold: float = 50.0) -> dict:
         self.ensure()
         month = int(inputs["month"])
-        today_wet = bool(inputs.get("today_wet", False))
+        feats = features_from_inputs(inputs)
+        today_wet = feats["rain_today"] >= WET_THRESHOLD_MM if inputs.get("rain_today") is not None else bool(inputs.get("today_wet", False))
         reg_out = []
         for key, m in self.models.items():
-            row = np.array([[float(inputs[f]) for f in m.features]])
-            p = m.predict(row, level)
-            reg_out.append(
-                {
-                    "key": key,
-                    "name": m.name,
-                    "yhat": float(p["yhat"][0]),
-                    "ci": [float(p["ci"][0][0]), float(p["ci"][1][0])],
-                    "pi": [float(p["pi"][0][0]), float(p["pi"][1][0])],
-                    "category": imd_category(float(p["yhat"][0])),
-                }
-            )
+            x = np.array([feats[f] for f in m.features])
+            p = m.predict(x.reshape(1, -1), level)
+            item = {
+                "key": key,
+                "name": m.name,
+                "target": m.target,
+                "yhat": float(p["yhat"][0]),
+                "ci": [float(p["ci"][0][0]), float(p["ci"][1][0])],
+                "pi": [float(p["pi"][0][0]), float(p["pi"][1][0])],
+                "category": imd_category(float(p["yhat"][0])),
+            }
+            if not m.log_target:
+                item["contributions"] = m.contributions(x)
+            reg_out.append(item)
 
         mm = self.monthly[month - 1]
         P = np.array(mm["P"])
@@ -219,6 +225,7 @@ class Engine:
         return to_json_safe(
             {
                 "inputs": {**inputs, "level": level, "threshold": threshold},
+                "features": feats,
                 "regression": reg_out,
                 "markov": {
                     "month": MONTH_NAMES[month - 1],
