@@ -4,6 +4,8 @@
 
 Course project · *Applied Statistics & Stochastic Processes*
 
+Live Link : https://princemittalr.github.io/rainfall-prediction-system/
+
 | Layer | Technology |
 |---|---|
 | Statistics engine | Python · NumPy · SciPy · pandas · scikit-learn |
